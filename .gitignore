@@ -8,5 +8,8 @@
 .Ruserdata
 .Rapp.history
 
+# ISRA proposal folders
+ISRA*/
+
 # Mac system files
 .DS_Store

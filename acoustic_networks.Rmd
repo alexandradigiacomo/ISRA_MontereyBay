@@ -17,6 +17,7 @@ library(lubridate)
 library(ggOceanMaps)
 library(ggplot2)
 library(sf)
+library(gridExtra)
 
 ```
 
@@ -191,6 +192,16 @@ plot_yearly_network <- function(year_i,
       name = "Sharks detected",
       range = c(2, 10)
     )
+  ## add site labels
+  p <- p +
+    geom_text(
+      data = nodes_y,
+      aes(x = lon, y = lat, label = Site.GroupName),
+      size = 3,
+      nudge_y = 0.01,
+      fontface = "bold",
+      color = "black"
+    )
 
   p +
     labs(
@@ -203,26 +214,11 @@ plot_yearly_network <- function(year_i,
 ```
 
 
-```{r fig.height=5, fig.width=4, dpi=150}
-plot_yearly_network(
-  year_i = 2023,
-  edges_yearly = edges_yearly,
-  nodes_yearly = nodes_yearly,
-  bbox = bbox
-)
+```{r fig.height=6, fig.width=6, dpi=150}
+p2023 <- plot_yearly_network(2023, edges_yearly, nodes_yearly, bbox)
+p2024 <- plot_yearly_network(2024, edges_yearly, nodes_yearly, bbox)
+p2025 <- plot_yearly_network(2025, edges_yearly, nodes_yearly, bbox)
 
-plot_yearly_network(
-  year_i = 2024,
-  edges_yearly = edges_yearly,
-  nodes_yearly = nodes_yearly,
-  bbox = bbox
-)
-
-plot_yearly_network(
-  year_i = 2025,
-  edges_yearly = edges_yearly,
-  nodes_yearly = nodes_yearly,
-  bbox = bbox
-)
+grid.arrange(p2023, p2024, p2025, ncol = 3)
 ```
 
