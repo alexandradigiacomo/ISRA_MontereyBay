@@ -17,8 +17,7 @@ library(lubridate)
 library(ggOceanMaps)
 library(ggplot2)
 library(sf)
-library(gridExtra)
-
+library(terra)
 ```
 
 ```{r}
@@ -134,7 +133,63 @@ nodes_yearly <- df_mb %>%
     .groups = "drop"
   ) %>%
   left_join(sites, by = "Site.GroupName")
+```
 
+```{r, fig.width=10, fig.height=8, dpi=150}
+# create per-shark edge list 
+edges_shark_yearly <- edges_raw %>%
+  mutate(year = lubridate::year(from_time)) %>%
+  left_join(sites, by = c("from_site" = "Site.GroupName")) %>%
+  rename(from_lon = lon, from_lat = lat) %>%
+  left_join(sites, by = c("to_site" = "Site.GroupName")) %>%
+  rename(to_lon = lon, to_lat = lat)
+
+shark_year_summary <- edges_shark_yearly %>%
+  group_by(Transmitter_ID, year) %>%
+  summarise(
+    first_edge_date = min(Date),
+    last_edge_date  = max(Date),
+    n_edges         = n(),
+    .groups = "drop"
+  ) %>% 
+  mutate(duration = (last_edge_date - first_edge_date) + 1,
+         frequency = n_edges/as.numeric(duration))
+
+shark_year_summary %>% 
+  group_by(year) %>% 
+  summarize(mean_edge_per_d = mean(frequency), 
+            n = n(), sd = sd(frequency))
+
+edges_shark_yearly %>%
+  mutate(
+    # non-directional pair (alphabetical order)
+    from_to_pair = pmap_chr(
+      list(from_site, to_site),
+      ~ paste(sort(c(..1, ..2)), collapse = "-")
+    ),
+    # direction based on latitude
+    direction = ifelse(to_lat > from_lat, "North", "South"), 
+    dummydate = as.Date(paste0("2000-", format(Date, "%m-%d"))),
+  ) %>% 
+  ggplot(aes(x = dummydate, y = from_to_pair, color = direction)) +
+  geom_point(size = 2) +
+  facet_wrap(~year(Date), scales = "free_y") +
+  theme_bw() +
+  scale_x_date(
+    limits = as.Date(c("2000-01-01", "2000-12-31")),
+    date_breaks = "1 month",
+    date_labels = "%b"
+  ) +
+  labs(
+    x = "Date",
+    y = "Site pair",
+    color = "Direction"
+  )
+
+```
+
+
+```{r}
 bbox <- c(
   xmin = -122.2,
   xmax = -121.7,
@@ -142,9 +197,6 @@ bbox <- c(
   ymax = 37.0
 )
 
-```
-
-```{r}
 plot_yearly_network <- function(year_i,
                                 edges_yearly,
                                 nodes_yearly,
@@ -192,16 +244,6 @@ plot_yearly_network <- function(year_i,
       name = "Sharks detected",
       range = c(2, 10)
     )
-  ## add site labels
-  p <- p +
-    geom_text(
-      data = nodes_y,
-      aes(x = lon, y = lat, label = Site.GroupName),
-      size = 3,
-      nudge_y = 0.01,
-      fontface = "bold",
-      color = "black"
-    )
 
   p +
     labs(
@@ -211,14 +253,167 @@ plot_yearly_network <- function(year_i,
     ) +
     theme_minimal() + guides(fill = "none")
 }
+
+plot_site_reference_map <- function(sites, bbox) {
+
+  p <- basemap(
+    data = data.frame(
+      lon = c(bbox["xmin"], bbox["xmax"]),
+      lat = c(bbox["ymin"], bbox["ymax"])
+    ),
+    bathymetry = TRUE,
+    expand.factor = 1.1,
+    bathy.style = "rcb"
+  )
+
+  # Add points
+  p <- p +
+    geom_point(
+      data = sites,
+      aes(x = lon, y = lat),
+      shape = 21,
+      fill = "red",
+      color = "black",
+      size = 3,
+      stroke = 0.5
+    )
+
+  # Add labels
+  p <- p +
+    geom_text(
+      data = sites,
+      aes(x = lon, y = lat, label = Site.GroupName),
+      nudge_y = 0.01,
+      size = 5,
+      fontface = "bold"
+    )
+
+  p +
+    labs(
+      title = "Site Reference Map",
+      x = NULL,
+      y = NULL
+    ) +
+    theme_minimal()
+}
+
 ```
 
 
 ```{r fig.height=6, fig.width=6, dpi=150}
+p2022 <- plot_yearly_network(2022, edges_yearly, nodes_yearly, bbox)
 p2023 <- plot_yearly_network(2023, edges_yearly, nodes_yearly, bbox)
 p2024 <- plot_yearly_network(2024, edges_yearly, nodes_yearly, bbox)
 p2025 <- plot_yearly_network(2025, edges_yearly, nodes_yearly, bbox)
 
-grid.arrange(p2023, p2024, p2025, ncol = 3)
+p2022
+p2023
+p2024
+p2025
+plot_site_reference_map(sites, bbox)
 ```
 
+```{r}
+# node useage
+
+region_availability <- tibble( # region availability (receiver coverage)
+  Site.GroupName = c("Santa Cruz", "Moss Landing", "Monterey", "Manresa", "Marina"),
+  available_2022 = c(1, 1, 1, 0, 0),
+  available_2023 = c(1, 1, 1, 0, 0),
+  available_2024 = c(1, 1, 1, 1, 1),
+  available_2025 = c(1, 0.25, 1, 0, 1) # moss landing data not yet downloaded
+) %>%
+  pivot_longer(
+    cols = starts_with("available_"),
+    names_to = "year",
+    values_to = "available"
+  ) %>%
+  mutate(
+    year = as.integer(sub("available_", "", year))
+  )
+
+regions_used <- nodes_yearly %>%
+  mutate(year = as.integer(year)) %>%
+  group_by(year) %>%
+  summarise(
+    regions_used = n_distinct(Site.GroupName),
+    .groups = "drop"
+  )
+
+regions_available <- region_availability %>%
+  group_by(year) %>%
+  summarise(
+    regions_available = sum(available),
+    .groups = "drop"
+  )
+
+region_usage_pct <- regions_used %>%
+  left_join(regions_available, by = "year") %>%
+  mutate(
+    pct_used = (regions_used / regions_available) * 100
+  )
+
+
+shark_region_usage <- df_mb %>%
+  mutate(year = year(DateTime)) %>%     # or year(date) if your column is named 'date'
+  group_by(Transmitter_ID, year) %>%
+  summarise(regions_used = n_distinct(Site.GroupName), .groups = "drop")
+
+shark_region_usage_pct <- shark_region_usage %>%
+  left_join(regions_available, by = "year") %>%
+  mutate(pct_used = (regions_used / regions_available) * 100)
+
+shark_region_usage_pct %>% 
+  group_by(year) %>% 
+  filter(year != 2021) %>%
+  summarize(average_pct_node_useage = mean(pct_used),
+            n = n())
+
+shark_region_usage_pct %>% 
+  filter(year == 2025)
+```
+
+# General Monterey Bay Map Plotting
+```{r fig.height = 5, fig.width=5, dpi=150}
+library(terra)
+library(stars)
+library(ggplot2)
+library(sf)
+#library(cowplot)   # for plot_grid or theme
+library(ggspatial) # for north arrow, scale bar (optional)
+library(rnaturalearth)
+
+bm <- './etopo_bedrock.tiff'
+bathy <- rast(bm)
+
+# zoom extent (Monterey Bay)
+xlim <- c(-122.3, -121.7)
+ylim <- c(36.4, 37.1)
+
+# crop bathy
+bathy_crop <- crop(bathy, ext(xlim[1], xlim[2], ylim[1], ylim[2]))
+
+bathy_ocean <- ifel(bathy_crop < -1, bathy_crop, NA)
+bathy_stars <- st_as_stars(bathy_ocean)
+coast <- ne_coastline(scale = "medium", returnclass = "sf")
+
+# depth limits
+depth_limits <- terra::minmax(bathy_ocean)
+
+ggplot() +
+  geom_stars(data = bathy_stars) +
+  scale_fill_gradientn(
+    colours = rev(RColorBrewer::brewer.pal(9, "Blues")),
+    na.value = "darkgrey",
+    values = scales::rescale(c(-200, -50, 0)),
+    name = "Depth (m)"
+  ) +
+  coord_sf(xlim = xlim, ylim = ylim, expand = FALSE) +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_text(size = 10),
+    axis.ticks.length = unit(3, "pt"),
+    panel.grid = element_blank()
+  )
+```
