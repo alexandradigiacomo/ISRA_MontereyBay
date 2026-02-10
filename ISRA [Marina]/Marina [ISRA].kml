@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document id="1rX-TK-4cxc8LjfrRwWDe1c9SS9D1iGCq">
+	<name>Marina [ISRA]</name>
+	<gx:CascadingStyle kml:id="__managed_style_5281BAB11E3D70126A58">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_47BE3C650D3D70126A58">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_3F3979CFBF3D70126A58">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_47BE3C650D3D70126A58</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_5281BAB11E3D70126A58</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Placemark id="0FDEA08DF23D46870C9E">
+		<name>Marina</name>
+		<LookAt>
+			<longitude>-121.8294042110596</longitude>
+			<latitude>36.64633508023983</latitude>
+			<altitude>31.52519396741614</altitude>
+			<heading>0</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>4036.48053909943</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_3F3979CFBF3D70126A58</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-121.8167634662517,36.74968956666144,0 -121.8171624514139,36.74190862484026,0 -121.8171769927513,36.7332108380529,0 -121.8178504040643,36.72364270333239,0 -121.818865432591,36.71387510631914,0 -121.8195517439015,36.70728254021361,0 -121.8210169456155,36.69928974355694,0 -121.8225705991032,36.69338479106293,0 -121.8241255974502,36.68787624543335,0 -121.8255063901914,36.68302943446349,0 -121.8273219920133,36.67900385365393,0 -121.8294321371615,36.67347111167668,0 -121.8312329152993,36.66910885335272,0 -121.8334329877476,36.66420088871895,0 -121.8355997003959,36.65956981039298,0 -121.8377473176575,36.65585405688072,0 -121.8405740343754,36.65143953781428,0 -121.8333094634117,36.64788795023342,0 -121.8315119675243,36.6471988540412,0 -121.8307610111259,36.6468246084948,0 -121.8280271910945,36.65131277572991,0 -121.8255648722801,36.65654758341354,0 -121.8213273202842,36.66504928478394,0 -121.8170587814875,36.6754003307686,0 -121.8157793088949,36.67888019451684,0 -121.8136095307577,36.68606949268337,0 -121.8122661805974,36.69046219445719,0 -121.8107234394771,36.69667144410471,0 -121.8098481574204,36.7018483072277,0 -121.8086913273136,36.70715356276706,0 -121.8082067453038,36.71067687044653,0 -121.8074556846385,36.71768139885706,0 -121.8073150847003,36.72078415537251,0 -121.8068434460441,36.72547100728753,0 -121.80664429234,36.73142976978266,0 -121.8055088523054,36.74947043549263,0 -121.8167634662517,36.74968956666144,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+</Document>
+</kml>

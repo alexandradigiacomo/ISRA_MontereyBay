@@ -1,0 +1,54 @@
+---
+title: "Aggregations [ISRA]"
+output: html_document
+date: "2026-02-04"
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+```
+
+```{r}
+df <- read.csv("./finmatch.csv") %>%
+  select(starts_with("id_")) %>%
+  pivot_longer(
+    cols = everything(),
+    values_to = "id") %>%
+  select(id) %>% drop_na(id) %>% 
+  filter(id != "")
+```
+
+```{r}
+df_inf <- df %>%
+  mutate(
+    site = str_extract(id, "^[A-Za-z]{2,3}"),
+    date_raw = str_extract(id, "\\d{6}(?=\\d{2}$)"),
+    shark_num = str_extract(id, "\\d{2}$"),
+    date = as.Date(date_raw, format = "%y%m%d")
+  ) %>%
+  select(site, date, shark_num) 
+
+df_nb <- df_inf %>%
+  filter(site == "NB")
+
+df_mb <- df_inf %>% 
+  filter(site == "MB")
+```
+
+# Fin ID Summary Statistics
+```{r}
+df_nb %>% group_by(date) %>% 
+  mutate(yy = year(date)) %>%
+  group_by(yy) %>% 
+  summarize(mean_sharks = mean(as.numeric(shark_num), na.rm=TRUE), 
+            sd_sharks = sd(as.numeric(shark_num)), n_dates = n_distinct(date))
+
+df_mb %>% group_by(date) %>% 
+  mutate(yy = year(date)) %>%
+  group_by(yy) %>% 
+  summarize(mean_sharks = mean(as.numeric(shark_num), na.rm=TRUE), 
+            sd_sharks = sd(as.numeric(shark_num)), n_dates = n_distinct(date))
+```
+

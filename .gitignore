@@ -1,0 +1,12 @@
+# Ignore all CSV files
+*.csv
+
+# R / RStudio files
+.Rhistory
+.RData
+.Rproj.user/
+.Ruserdata
+.Rapp.history
+
+# Mac system files
+.DS_Store

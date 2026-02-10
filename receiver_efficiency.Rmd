@@ -1,0 +1,281 @@
+---
+title: "Acoustic Networks"
+output: html_document
+date: "2026-02-04"
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(tidygraph)
+library(ggraph)
+library(viridis)
+library(ggforce)
+library(igraph)
+library(dplyr)
+library(geosphere)
+```
+
+```{r}
+df <- read.csv("./cleaned_detections.csv") 
+df_r <- read.csv("./receiver_metadata.csv")
+
+df_det <- df %>%
+  mutate(Date = as.Date(Date, format = "%m/%d/%y"))
+
+df_rec <- df_r %>% 
+  filter(lost_missing !=1) %>% # remove all lost/missing receivers
+  drop_na(Deploy.DateTime, Lat) %>% 
+  mutate(Deploy.DateTime=as.Date(Deploy.DateTime),
+         Recovery.DateTime=as.Date(Recovery.DateTime))
+
+df_mrec <- df_rec %>% # receivers in MBNMS
+  filter(Lat > 36.599577 & Lat < 37.15)
+
+df_mdet <- df_det %>%
+  filter(Lat > 36.599577 & Lat < 37.15) # detections in MBNMS
+```
+
+# Coverage Exploration
+```{r}
+# find recevier deployments to match up
+df_mrec <- df_mrec %>% 
+  select(Site.Name, Deploy.DateTime, Recovery.DateTime, Lat, Lon) %>% 
+  unique() %>% arrange(Site.Name, Deploy.DateTime) %>%
+  filter(!is.na(Recovery.DateTime)) %>% 
+  group_by(Site.Name) %>%
+  mutate(
+    new_period = Deploy.DateTime > lag(Recovery.DateTime),
+    new_period = if_else(is.na(new_period), TRUE, new_period),
+    period_id = cumsum(new_period)
+  ) %>%
+  group_by(Site.Name, period_id) %>%
+  summarise(
+    Deploy.DateTime = min(Deploy.DateTime),
+    Recovery.DateTime = max(Recovery.DateTime),
+    Lat = mean(Lat), Lon = mean(Lon),
+    .groups = "drop"
+  )
+df_mrec 
+
+df_mrec %>% 
+  mutate(
+    Site.Name = factor(Site.Name,
+      levels = unique(Site.Name[order(Lat)]))) %>%
+ggplot(aes(
+         y = Site.Name,
+         x = Deploy.DateTime,
+         xend = Recovery.DateTime
+       )) +
+  geom_segment(linewidth = 3, lineend = "butt") +
+  scale_x_date(name = "Date") +
+  ylab("Site") +
+  theme_minimal() + 
+  coord_cartesian(xlim = c(as.Date("2020-01-01"), NA))
+```
+
+
+```{r}
+# fill in site groups
+df_mrec <- df_mrec %>%
+  mutate(
+    Site.GroupName = case_when(
+      Site.Name %in% c("Ano OA2", "Ano South", "The Cut", "Ano Bay", "The Pit") ~ "Ano Nuevo",
+      Site.Name %in% c("Cement Ship", "SC3", "SC4", "SC2", "Aptos Swim Buoy") ~ "Santa Cruz",
+      Site.Name %in% c("HMS OA1", "Breakwater", "Lovers Pt", "MY1", "MY3", "MY4", "SWC1", "Bird Rock") ~ "Monterey",
+      Site.Name %in% c("MSB1", "Salinas River State Beach") ~ "Marina",
+      Site.Name %in% c("ML2", "ML3", "ML4") ~ "Moss Landing",
+      Site.Name %in% c("Manresa State Beach") ~ "Manresa",
+      TRUE ~ NA_character_)) %>% 
+  filter(!is.na(Site.GroupName))
+```
+
+```{r}
+overlaps <- df_mrec %>% # calculate overlap between receivers within site groups
+  select(Site.Name, Site.GroupName, Deploy.DateTime, Recovery.DateTime) %>%
+  rename(
+    site1 = Site.Name,
+    group = Site.GroupName,
+    start1 = Deploy.DateTime,
+    end1   = Recovery.DateTime) %>%
+  inner_join(
+    df_mrec %>%
+      select(Site.Name, Site.GroupName, Deploy.DateTime, Recovery.DateTime) %>%
+      rename(
+        site2 = Site.Name,
+        group = Site.GroupName,
+        start2 = Deploy.DateTime,
+        end2   = Recovery.DateTime),
+    by = "group") %>%
+  filter(site1 != site2) %>%  # keep only cross-site pairs
+  mutate(
+    overlap_start = pmax(start1, start2),
+    overlap_end   = pmin(end1, end2)) %>%
+  filter(overlap_start < overlap_end)
+
+daily_presence <- df_mdet %>% # daily shark presence per site
+  distinct(Site.Name, Date, Transmitter) %>%
+  group_by(Site.Name, Date) %>%
+  summarise(sharks = list(Transmitter), .groups = "drop")
+
+daily_overlaps <- overlaps %>% # break overlap to daily chunks
+  rowwise() %>%
+  mutate(day = list(seq.Date(overlap_start, overlap_end, by = "day"))) %>%
+  unnest(day)
+
+daily_pairs <- daily_overlaps %>% # join overlap day to detections day 
+  left_join(daily_presence, by = c("site1" = "Site.Name", "day" = "Date")) %>%
+  rename(sharks1 = sharks) %>%
+  left_join(daily_presence, by = c("site2" = "Site.Name", "day" = "Date")) %>%
+  rename(sharks2 = sharks)
+
+daily_pairs <- daily_pairs %>%
+  mutate(
+    sharks1 = map(sharks1, ~ .x %||% character(0)),
+    sharks2 = map(sharks2, ~ .x %||% character(0)))
+
+daily_cov <- daily_pairs %>% 
+  # # hard coded param: remove days where sharks1 has <=1 shark; data inflation
+  filter(map_int(sharks1, length) > 1) %>%
+  mutate(
+    coverage_A_to_B = map2_dbl(sharks1, sharks2, ~ {
+      length(intersect(.x, .y)) / length(unique(.x))
+    })
+  )
+```
+
+```{r}
+node_activity_summary <- daily_pairs %>% 
+  # # hard coded param: both site A and B must have detected at least one shark on this day (zero-inflation)
+  filter(map_int(sharks1, length) >= 1) %>%
+  filter(map_int(sharks2, length) >= 1) %>%
+  # how active is A relative to B; daily
+  # more active (+), less active (-)
+  mutate(
+    n_sharks1 = map_int(sharks1, length),
+    n_sharks2 = map_int(sharks2, length),
+    # union of sets 1 and 2
+    total_sharks = map2_int(sharks1, sharks2, ~ length(unique(c(.x, .y)))),
+    rel_activity = ifelse(total_sharks > 0,
+                          (n_sharks1 - n_sharks2) / total_sharks,
+                          NA_real_)) %>%
+  group_by(site1) %>%
+  summarise(avg_rel_activity = mean(rel_activity, na.rm = TRUE)) %>%
+  rename(Site.Name = site1)
+```
+
+
+```{r}
+coverage_summary <- daily_cov %>% # summarize coverage per receiver pair
+  # coverage A to B: (n) det at both A & B/ (n) det at A
+  group_by(group, site1, site2) %>%
+  summarise(
+    mean_coverage_A_to_B = mean(coverage_A_to_B, na.rm = TRUE),
+    days_overlap = n(),
+    n_individuals_total = n_distinct(unlist(c(sharks1, sharks2))),
+    .groups = "drop"
+  ) %>% 
+  arrange(desc(mean_coverage_A_to_B))
+```
+
+
+```{r, fig.height=7, fig.width=10, dpi=150}
+# receiver coordinates
+nodes <- df_mrec %>%
+  group_by(Site.Name, Site.GroupName) %>%
+  rename(group = Site.GroupName) %>%
+  mutate(Lat = mean(Lat), Lon = mean(Lon)) %>%
+  distinct(Site.Name, Lat, Lon, group) %>%
+  left_join(node_activity_summary, by = "Site.Name")
+
+# connection summary
+edges <- coverage_summary %>%
+  rename(from = site1, to = site2, weight = mean_coverage_A_to_B)
+
+graph <- tbl_graph(nodes = nodes, edges = edges, directed = TRUE)
+
+# plot
+ggraph(graph, layout = "manual", x = nodes$Lon, y = nodes$Lat) + 
+  geom_edge_fan(aes(width = weight, alpha = weight, color = weight), 
+                arrow = arrow(length = unit(3, "mm")), end_cap = circle(3, 'mm')) + 
+  geom_node_point(aes(size=nodes$avg_rel_activity)) +
+  scale_size_continuous(range = c(0.1,6),
+                        name = "Relative Activity") +
+  geom_node_text(aes(label = Site.Name), vjust = -1, size = 3) + 
+  scale_edge_width(range = c(0.3, 2.5)) + 
+  scale_edge_alpha(range = c(0.2, 1)) + 
+  scale_edge_color_gradientn(
+  colors = viridis(100, option = "plasma"),
+  name = "coverage",
+  limits = c(0, 1),
+  breaks = seq(0, 1, 0.2)) +
+  theme_void() + 
+  facet_nodes(~group, scales="free")+ 
+  scale_x_continuous(expand = expansion(mult = 0.20)) +
+  scale_y_continuous(expand = expansion(mult = 0.20)) +
+  coord_quickmap(clip = "off") +
+  labs(title = "Coverage Network (geographic layout)")
+```
+```{r, fig.height=7, fig.width=10, dpi=150}
+# plot
+ggraph(graph, layout = "manual", x = nodes$Lon, y = nodes$Lat) + 
+  geom_edge_fan(
+    aes(width = weight, alpha = weight),
+    color = "darkgray",
+    arrow = arrow(length = unit(3, "mm")),
+    end_cap = circle(3, "mm")) +
+  # nodes: size + color by relative activity
+  geom_node_point(
+    aes(size  = nodes$avg_rel_activity,
+      fill  = nodes$avg_rel_activity),
+    shape  = 21, color  = "black", stroke = 0.4) +
+  # node size
+  scale_size_continuous(
+    range = c(2, 5),
+    name = "Relative Activity") +
+  # node color: red → white → blue
+  scale_fill_gradient2(
+    low = "blue",mid = "white",high = "red",
+    midpoint = 0,name = "Relative Activity") +
+  # edge scales 
+  scale_edge_width(range = c(0.3, 2.5)) +
+  scale_edge_alpha(range = c(0.2, 1)) +
+  geom_node_text(aes(label = Site.Name), vjust = -1, size = 3) +
+  theme_void() +
+  facet_nodes(~group, scales = "free") +
+  scale_x_continuous(expand = expansion(mult = 0.20)) +
+  scale_y_continuous(expand = expansion(mult = 0.20)) +
+  coord_quickmap(clip = "off") +
+  labs(title = "Coverage Network (geographic layout)")
+
+```
+
+```{r}
+df_dist <- coverage_summary %>%
+  left_join(nodes %>% rename(site1 = Site.Name, lat1 = Lat, lon1 = Lon),
+            by = "site1") %>%
+  left_join(nodes %>% rename(site2 = Site.Name, lat2 = Lat, lon2 = Lon),
+            by = "site2") %>%
+  rowwise() %>%
+  mutate(distance_km = distHaversine(c(lon1, lat1), c(lon2, lat2))/1000) %>%
+  ungroup()
+
+df_dist %>% 
+  ggplot(aes(x = distance_km, y = mean_coverage_A_to_B, 
+             color = n_individuals_total)) + 
+  scale_color_viridis_c(option = "plasma") +
+  geom_smooth(method = "lm", se=F, color="gray") +
+  geom_point() + theme_bw() + 
+  xlab("Receiver separation distance (km)") + 
+  ylab("Coverage (prop. A also det at B)") + 
+  labs(color = "total sharks")
+
+df_dist %>% 
+  arrange(mean_coverage_A_to_B)
+
+df_mdet %>% 
+  filter(Site.Name == "MY3") %>% 
+  ggplot(aes(x= Date, y = Transmitter)) + geom_point() + theme_bw()
+```
+

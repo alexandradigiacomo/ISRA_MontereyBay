@@ -1,0 +1,161 @@
+---
+title: "Acoustic Telemetry Aggregations [ISRA]"
+output: html_document
+date: "2026-02-04"
+---
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+```
+
+```{r}
+df <- read.csv("./cleaned_detections.csv") 
+
+df_rec <- df %>% # extract recent data only to minimize file size
+  mutate(Date = as.Date(Date, format = "%m/%d/%y")) %>% 
+  filter(year(Date) > 2020) %>% 
+  mutate(DateTime = as.POSIXct(DateTime,
+           format = "%Y-%m-%dT%H:%M:%SZ",
+           tz = "UTC"))
+
+df_agg <- df_rec %>% 
+  filter(Site.Name %in% c("Aptos Swim Buoy", "Cement Ship", 
+                         "MSB1", "Salinas River State Beach")) %>% 
+  mutate(Group.Name = case_when(
+    Site.Name %in% c("Aptos Swim Buoy", "Cement Ship") ~ 'New Brighton',
+    Site.Name %in% c("MSB1", "Salinas River State Beach") ~ 'Marina'
+  ))
+```
+
+
+```{r}
+# Aggregations are here defined as 3 or more sharks detected within 5 minutes at the same receiver
+# An event groups consecutive 5-min bins with aggregations
+
+# set aggregation window (minutes)
+t_step <- 5
+min_sharks <- 3
+
+# Bin detections and count sharks per station per time bin
+aggregations <- df_agg %>%
+  mutate(time_bin = floor_date(DateTime, paste0(t_step, " minutes"))) %>%
+  group_by(Site.Name, Group.Name, time_bin) %>%
+  summarise(
+    n_sharks = n_distinct(Transmitter),
+    sharks = paste(unique(Transmitter), collapse = ","),
+    n_detections = n(),
+    first_detection = min(DateTime),  
+    last_detection = max(DateTime),   
+    .groups = "drop"
+  ) %>%
+  filter(n_sharks >= min_sharks)
+
+cat("Found", nrow(aggregations), "time bins with", min_sharks, "+ sharks\n")
+
+# Group into events (=consecutive time bins)
+events <- aggregations %>%
+  arrange(Site.Name, time_bin) %>%
+  group_by(Site.Name, Group.Name) %>%
+  mutate(
+    time_diff = as.numeric(difftime(time_bin, lag(time_bin), units = "mins")),
+    event_id = cumsum(is.na(time_diff) | time_diff > t_step)
+  ) %>%
+  ungroup() %>%
+  group_by(Site.Name, Group.Name, event_id) %>%
+  summarise(
+    event_start = min(first_detection),      # Use actual first detection
+    event_end = max(last_detection),         # Use actual last detection
+    duration_mins = as.numeric(difftime(max(last_detection), 
+                                        min(first_detection), 
+                                        units = "mins")),
+    n_time_bins = n(),
+    max_sharks = max(n_sharks),
+    mean_sharks = mean(n_sharks),
+    total_unique_sharks = n_distinct(unlist(strsplit(sharks, ","))),
+    .groups = "drop"
+  )
+
+cat("\nTotal events:", nrow(events), "\n\n")
+
+summary(events$duration_mins)
+
+
+# Summary
+summary_counts <- events %>%
+  count(max_sharks, name = "n_events") %>%
+  arrange(max_sharks)
+
+cat("\n=== Events by max shark count ===\n")
+print(summary_counts)
+summary(events$max_sharks)
+summary(events$total_unique_sharks)
+```
+```{r}
+## 5. Timeline of aggregation events
+  # Sort so smaller aggregations plot first, larger ones on top
+events_sorted_nb <- events %>% arrange(max_sharks) %>% 
+  filter(Group.Name == "New Brighton")
+
+plot_timeline <- ggplot(events_sorted_nb, aes(x = event_start,
+                                           y = Group.Name,
+                                           color = factor(max_sharks),
+                                           size = duration_mins)) +
+  geom_point(alpha = 0.9, shape = 16, 
+             position = position_jitter(height = 0.2, width = 0, seed = 42)) +
+  scale_color_viridis_d(option = "plasma", name = "Max\nSharks") +
+  scale_size_continuous(name = "Duration\n(minutes)", range = c(2, 8)) +
+  labs(
+    x = "",
+    y = "Site Group Name",
+    title = "White Shark Aggregation Events Over Time",
+    subtitle = paste0("Total events: ", nrow(events_sorted_nb))
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_line(color = "grey90", linewidth = 0.5),
+    panel.grid.major.x = element_line(color = "grey95", linewidth = 0.3),
+    axis.text.y = element_text(size = 11, face = "bold"),
+    axis.text.x = element_text(size = 10),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
+
+plot_timeline
+```
+
+```{r}
+## 5. Timeline of aggregation events
+  # Sort so smaller aggregations plot first, larger ones on top
+events_sorted_mb <- events %>% arrange(max_sharks) %>% 
+  filter(Group.Name == "Marina")
+
+plot_timeline <- ggplot(events_sorted_mb, aes(x = event_start,
+                                           y = Group.Name,
+                                           color = factor(max_sharks),
+                                           size = duration_mins)) +
+  geom_point(alpha = 0.9, shape = 16, 
+             position = position_jitter(height = 0.2, width = 0, seed = 42)) +
+  scale_color_viridis_d(option = "plasma", name = "Max\nSharks") +
+  scale_size_continuous(name = "Duration\n(minutes)", range = c(2, 8)) +
+  labs(
+    x = "",
+    y = "Site Group Name",
+    title = "White Shark Aggregation Events Over Time",
+    subtitle = paste0("Total events: ", nrow(events_sorted_mb))
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_line(color = "grey90", linewidth = 0.5),
+    panel.grid.major.x = element_line(color = "grey95", linewidth = 0.3),
+    axis.text.y = element_text(size = 11, face = "bold"),
+    axis.text.x = element_text(size = 10),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
+
+plot_timeline
+```
+

@@ -1,0 +1,228 @@
+---
+title: "Acoustic Networks"
+output: html_document
+date: "2026-02-04"
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(tidygraph)
+library(ggraph)
+library(viridis)
+library(ggforce)
+library(igraph)
+library(geosphere)
+library(lubridate)
+library(ggOceanMaps)
+library(ggplot2)
+library(sf)
+
+```
+
+```{r}
+df <- read.csv("./cleaned_detections.csv") %>%
+  mutate(Date = as.Date(Date, format = "%m/%d/%y"))
+
+juvenile_taglist = c(
+  '50185', '50196', '62273', '62266', '55576',
+  '50184','62272', '55578', '50198', '50193', '50168', '50195', '50173', '50199', '50177',
+  '55561','55560','55564','55562','55563','62277','62268','58082','58084','58090','58095',
+  '58097','58099','58088','58092')
+
+df_det <- df %>% # filter to only juvenile tags
+  separate(Transmitter, into = c("x", "y", "Transmitter_ID"), sep = "-") %>%
+  filter(Transmitter_ID %in% juvenile_taglist) %>% 
+  select(DateTime, Date, Transmitter_ID, Lat, Lon, Site.Name) # select only relevant columns
+
+df_mb <- df_det %>% # filter to only detections in MB
+  filter(Lat > 36.599577 & Lat < 37.0) 
+```
+
+
+```{r}
+# fill in site groups
+df_mb <- df_mb %>%
+  mutate(
+    Site.GroupName = case_when(
+      Site.Name %in% c("Cement Ship", "SC3", "SC4", "SC2", "Aptos Swim Buoy") ~ "Santa Cruz",
+      Site.Name %in% c("HMS OA1", "Breakwater", "Lovers Pt", "MY1", "MY3", "MY4", "SWC1", "Bird Rock") ~ "Monterey",
+      Site.Name %in% c("MSB1", "Salinas River State Beach") ~ "Marina",
+      Site.Name %in% c("ML2", "ML3", "ML4") ~ "Moss Landing",
+      Site.Name %in% c("Manresa State Beach") ~ "Manresa",
+      TRUE ~ NA_character_)) %>% 
+  filter(!is.na(Site.GroupName))
+```
+
+# Network Analysis 
+```{r fig.height=5, fig.width=7, dpi=150}
+# simple abacus 
+colormap <- c(
+  "Santa Cruz"  = "#961E3E",  # maroon
+  "Manresa"     = "#4C8BB5",  # blue
+  "Moss Landing"= "#FA865C",  # orange
+  "Marina"      = "#1D7562",  # forest green
+  "Monterey"    = "#B35BB2"   # purple
+)
+df_bay <- df_mb %>% 
+  filter(Site.GroupName %in% c("Monterey", "Marina", "Moss Landing", 
+         "Manresa", "Santa Cruz"))
+
+df_bay$Site.GroupName = factor(df_bay$Site.GroupName, levels = names(colormap))
+
+# plot
+ggplot(df_bay, aes(x = Date, y = Transmitter_ID, fill = Site.GroupName)) +
+  geom_point(shape = 21, size = 3, color = "black", stroke = 0.2, alpha = 0.8) +
+  scale_fill_manual(values = colormap, 
+                    breaks = names(colormap)) +
+  labs(x = "",
+    y = "White Shark Acoustic Transmitter ID",
+    title = "Acoustic Detections - Monterey Bay", fill = "Site Group") +
+  theme_bw() +
+  theme(
+    legend.position="right",
+    panel.grid = element_blank()) + scale_x_date( 
+                                      labels = scales::label_date_short(), date_breaks = "3 month")
+```
+
+```{r}
+edges_raw <- df_mb %>%
+  select(-Site.Name) %>%
+  group_by(Transmitter_ID) %>%
+  mutate(
+    from_site = Site.GroupName,
+    to_site   = lead(Site.GroupName),
+    from_time = DateTime,
+    to_time   = lead(DateTime),
+    dt_days   = as.numeric(difftime(to_time, from_time, units = "days")),
+    month     = month(Date)) %>%
+  ungroup() %>%
+  filter(
+    !is.na(to_site),
+    from_site != to_site,
+    dt_days <= 7)
+
+sites <- tibble::tribble(
+  ~Site.GroupName, ~lon,    ~lat,
+  "Santa Cruz",    -121.949, 36.969,
+  "Manresa",       -121.83, 36.90,
+  "Moss Landing",  -121.79, 36.80,
+  "Marina",        -121.80, 36.68,
+  "Monterey",      -121.89, 36.60
+)
+
+edges_yearly <- edges_raw %>%
+  mutate(year = lubridate::year(from_time)) %>%
+  group_by(year, from_site, to_site) %>%
+  summarise(
+    n_transitions = n(),
+    n_sharks = n_distinct(Transmitter_ID),
+    .groups = "drop"
+  ) %>%
+  left_join(sites, by = c("from_site" = "Site.GroupName")) %>%
+  rename(from_lon = lon, from_lat = lat) %>%
+  left_join(sites, by = c("to_site" = "Site.GroupName")) %>%
+  rename(to_lon = lon, to_lat = lat)
+
+nodes_yearly <- df_mb %>%
+  mutate(year = lubridate::year(DateTime)) %>%
+  group_by(year, Site.GroupName) %>%
+  summarise(
+    n_detections = n(),
+    n_sharks = n_distinct(Transmitter_ID),
+    .groups = "drop"
+  ) %>%
+  left_join(sites, by = "Site.GroupName")
+
+bbox <- c(
+  xmin = -122.2,
+  xmax = -121.7,
+  ymin = 36.5,
+  ymax = 37.0
+)
+
+```
+
+```{r}
+plot_yearly_network <- function(year_i,
+                                edges_yearly,
+                                nodes_yearly,
+                                bbox) {
+
+  edges_y <- edges_yearly %>% dplyr::filter(year == year_i)
+  nodes_y <- nodes_yearly %>% dplyr::filter(year == year_i)
+
+  p <- basemap(
+    data = data.frame(
+      lon = c(bbox["xmin"], bbox["xmax"]),
+      lat = c(bbox["ymin"], bbox["ymax"])
+    ),
+    bathymetry = TRUE,
+    expand.factor = 1.1,
+    bathy.style = "rcb"
+  )
+
+  ## undirected, weighted edges
+  p <- p +
+    geom_segment(
+      data = edges_y,
+      aes(
+        x = from_lon, y = from_lat,
+        xend = to_lon, yend = to_lat,
+        linewidth = n_transitions
+      ),
+      color = "steelblue",
+      alpha = 0.8
+    ) +
+    scale_linewidth(range = c(1, 6), name = "Transitions")
+
+  ## nodes
+  p <- p +
+    geom_point(
+      data = nodes_y,
+      aes(x = lon, y = lat, size = n_sharks),
+      shape = 21,
+      fill = "red",
+      color = "black",
+      stroke = 0.4,
+      alpha = 0.85
+    ) +
+    scale_size_continuous(
+      name = "Sharks detected",
+      range = c(2, 10)
+    )
+
+  p +
+    labs(
+      title = paste(year_i),
+      x = NULL,
+      y = NULL
+    ) +
+    theme_minimal() + guides(fill = "none")
+}
+```
+
+
+```{r fig.height=5, fig.width=4, dpi=150}
+plot_yearly_network(
+  year_i = 2023,
+  edges_yearly = edges_yearly,
+  nodes_yearly = nodes_yearly,
+  bbox = bbox
+)
+
+plot_yearly_network(
+  year_i = 2024,
+  edges_yearly = edges_yearly,
+  nodes_yearly = nodes_yearly,
+  bbox = bbox
+)
+
+plot_yearly_network(
+  year_i = 2025,
+  edges_yearly = edges_yearly,
+  nodes_yearly = nodes_yearly,
+  bbox = bbox
+)
+```
+

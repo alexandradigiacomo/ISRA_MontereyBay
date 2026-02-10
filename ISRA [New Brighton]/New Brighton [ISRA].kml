@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document id="1rNf_reb8wMRWPWkzbTxseWCV4xq7QlQC">
+	<name>New Brighton [ISRA]</name>
+	<Schema name="__managed_schema" id="__managed_schema">
+		<SimpleField type="string" name="COL571B1BD7BC3E1D6A">
+			<displayName>Message</displayName>
+		</SimpleField>
+	</Schema>
+	<gx:CascadingStyle kml:id="__managed_style_2944E786853D70167A7F">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_157CE30DF63D70167A7F">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>https://earth.google.com/earth/document/icon?color=1976d2&amp;id=2000&amp;scale=4</href>
+				</Icon>
+				<hotSpot x="64" y="128" xunits="pixels" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_067F7213EC3D70167A7F">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_157CE30DF63D70167A7F</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_2944E786853D70167A7F</styleUrl>
+		</Pair>
+	</StyleMap>
+	<gx:CascadingStyle kml:id="__managed_style_56340418683D70167A80">
+		<Style>
+			<IconStyle>
+				<scale>1.2</scale>
+				<Icon>
+					<href>data:image/png;base64,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</href>
+				</Icon>
+				<hotSpot x="0" y="64" xunits="fraction" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>3</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text>$[__managed_schema/COL571B1BD7BC3E1D6A]</text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<gx:CascadingStyle kml:id="__managed_style_4BA64581DA3D70167A80">
+		<Style>
+			<IconStyle>
+				<Icon>
+					<href>data:image/png;base64,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</href>
+				</Icon>
+				<hotSpot x="0" y="64" xunits="fraction" yunits="insetPixels"/>
+			</IconStyle>
+			<LabelStyle>
+			</LabelStyle>
+			<LineStyle>
+				<color>ff2dc0fb</color>
+				<width>2</width>
+			</LineStyle>
+			<PolyStyle>
+				<color>40ffffff</color>
+			</PolyStyle>
+			<BalloonStyle>
+				<text>$[__managed_schema/COL571B1BD7BC3E1D6A]</text>
+			</BalloonStyle>
+		</Style>
+	</gx:CascadingStyle>
+	<StyleMap id="__managed_style_39E777CA513D70167A80">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#__managed_style_4BA64581DA3D70167A80</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#__managed_style_56340418683D70167A80</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Placemark id="571B1BD6C2000001">
+		<name>Home</name>
+		<styleUrl>#__managed_style_39E777CA513D70167A80</styleUrl>
+		<ExtendedData>
+			<SchemaData schemaUrl="#__managed_schema">
+				<SimpleData name="COL571B1BD7BC3E1D6A"><![CDATA[Home point<BR>Altitude:-21 feet<BR><BR>&nbsp;]]></SimpleData>
+			</SchemaData>
+		</ExtendedData>
+		<Point>
+			<altitudeMode>absolute</altitudeMode>
+			<coordinates>-121.825437963459,36.6621228440896,-6.342518299999999</coordinates>
+		</Point>
+	</Placemark>
+	<Placemark id="03D4313B223D465342C4">
+		<name>New Brighton</name>
+		<LookAt>
+			<longitude>-121.929466779854</longitude>
+			<latitude>36.97452015720155</latitude>
+			<altitude>-2.94814141233502</altitude>
+			<heading>1.069964177033369e-09</heading>
+			<tilt>0</tilt>
+			<gx:fovy>35</gx:fovy>
+			<range>11374.57339368062</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_067F7213EC3D70167A7F</styleUrl>
+		<Polygon>
+			<outerBoundaryIs>
+				<LinearRing>
+					<coordinates>
+						-121.9430326338557,36.97552347417207,0 -121.940981583588,36.97382357685185,0 -121.9385894393604,36.97240862940455,0 -121.936595937226,36.97126346372482,0 -121.9342486109351,36.97017427747956,0 -121.9317739456336,36.96900953975968,0 -121.9295608264736,36.96811782744301,0 -121.926939524961,36.96720248343452,0 -121.9244966338486,36.9661299582563,0 -121.9221570579474,36.96521418291807,0 -121.9204234453537,36.96463188093246,0 -121.9177194655246,36.96384520079902,0 -121.9168210160382,36.96488468540574,0 -121.9162665485439,36.9657122388149,0 -121.9146448389193,36.9679843735704,0 -121.9136122493168,36.96948213653661,0 -121.9127382632399,36.97064393585887,0 -121.9141522191068,36.97132934388598,0 -121.916746305751,36.97252068651508,0 -121.9203943001837,36.97412456622668,0 -121.9226547356703,36.9749013837587,0 -121.925744735885,36.97587713627962,0 -121.928524039186,36.97659348192058,0 -121.9310033093279,36.97722564211782,0 -121.9331900187975,36.9777626559272,0 -121.9351404552115,36.97812228597055,0 -121.9368959882159,36.97827720022773,0 -121.9391049417174,36.97796452196482,0 -121.9408810389271,36.9770986093852,0 -121.9430326338557,36.97552347417207,0 
+					</coordinates>
+				</LinearRing>
+			</outerBoundaryIs>
+		</Polygon>
+	</Placemark>
+</Document>
+</kml>

@@ -1,0 +1,54 @@
+---
+title: "Size Distributions"
+output: html_document
+date: "2026-02-04"
+---
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+```
+
+```{r}
+lens <- read.csv("./lengths.csv")
+df <- lens %>% # group by White.Shark.ID (from individual img measurements)
+  group_by(White.Shark.ID, site) %>% 
+  summarize(length_cm = mean(TL_skel_cm, na.rm = T),
+            sex = names(which.max(
+              table(sex[sex != "U" | !any(sex != "U")]))),
+    .groups = "drop") %>% 
+  drop_na(length_cm)
+```
+
+```{r}
+assign_ontog <- function(df){
+  #Assigns age class (juvenile, subadult adult) as categorical based on Sex and Length
+  df <- df %>% 
+    mutate(
+      ontog = case_when(
+        length_cm < 175 ~ "Young-of-the-Year",
+        
+        length_cm < 300 ~ "Juvenile",
+        
+        sex == "M" & length_cm >= 300 & length_cm <= 360 ~ "Subadult",
+        sex == "F" & length_cm >= 300 & length_cm <= 450 ~ "Subadult",
+        sex == "U" & length_cm >= 300 & length_cm <= 405 ~ "Subadult", # split middle for Unk Sex
+        
+        sex == "M" & length_cm > 360 ~ "Adult",
+        sex == "F" & length_cm > 450 ~ "Adult",
+        sex == "U" & length_cm > 405 ~ "Adult" # split middle for Unk Sex
+      )
+    )
+}
+```
+
+```{r}
+df_ont <- assign_ontog(df)
+
+df_ont %>% 
+  group_by(site) %>%
+  count(ontog)
+```
+
+
+
