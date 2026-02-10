@@ -5,39 +5,40 @@ This repository contains the code and analyses used to support Important Shark a
 
 ## Repository Contents
 acoustic_aggregations.Rmd
-- Purpose: Detects and maps white shark aggregations using ISRA-generated acoustic detection data.
-- Definition of aggregation: Presence of 3+ individuals within a 5-minute window.
+- Purpose: Detects and maps white shark aggregations using ISRA-generated acoustic detection data, which defines aggregations as the presence of 3+ individuals within a 5-minute window.
+- Inputs:
+  - Cleaned acoustic telemetry detections
 - Outputs:
-  - Aggregation events mapped over time
-  - Aggregation occurrences at proposed sites:
-    - New Brighton
-    - Marina
+  - Aggregation events mapped over time at proposed sites (New Brighton, Marina)
 
 fins_aggregations.Rmd
 - Purpose: Describes white shark sightings at aggregation sites using fin-ID demographic characteristics.
-- Focus:
-  - Individual shark sighting history
-  - Demographics by fin-ID (sex, size class, etc.)
+- Inputs:
+  - Individual shark fin IDs + demographics (sex, size class, etc.)
 - Outputs:
-  - Sighting summaries for New Brighton and Marina
+  - Sighting summaries for proposed aggregations
   - Demographic breakdowns for observed sharks
 
 size_distributions.Rmd
 - Purpose: Analyzes size and ontogenetic characteristics of shark aggregations.
+- Inputs:
+  - Length data at aggregations (DiGiacomo et al. 2026)
 - Outputs:
   - Summary statistics for shark size distributions
   - Ontogeny-related summaries (e.g., juvenile vs adult composition)
 
 acoustic_networks.Rmd
 - Purpose: Performs preliminary network analyses on tagged white sharks in Monterey Bay.
-- Key analyses:
-  - Creation of nodes and edges representing shark movement and interaction
-  - Computation of:
-    - Activity
-    - Node coverage
+- Inputs:
+  - Cleaned acoustic telemetry detections
+- Outputs:
+    - Activity metrics
+    - Node coverage metrics
 
 receiver_efficiency.Rmd
 - Purpose: Explores receiver coverage across the receiver clusters in five regions of Monterey Bay.
+- Inputs:
+  - Cleaned acoustic telemetry detections and receiver metadata
 - Outputs:
   - Receiver coverage comparisons across regions
   - Efficiency and coverage visualization by receiver cluster
